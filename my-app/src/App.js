@@ -1,25 +1,28 @@
-import logo from './logo.svg';
 import './App.css';
+
+function MALSignIn() {
+  return(
+    <button className="MAL-sign-in-button">Sign in with MyAnimeList</button>
+  );
+}
+
+function ArrowToNextPage() {
+  return(
+    <img src="/downarrow.png" className="Arrow" alt="Arrow to next page"></img>
+  )
+}
 
 function App() {
   return (
     <div className="App">
       <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
+        <h1>Tokku</h1>
+        <MALSignIn/>
+        <ArrowToNextPage/>
       </header>
     </div>
   );
 }
+
 
 export default App;
