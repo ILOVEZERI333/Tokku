@@ -29,6 +29,8 @@ router.post("/login", validiationChain, async (req, res) => {
     try { 
         const { name, password } = req.body
 
+        connectDB()
+
 
         const user = await User.findOne({name: name}).lean()
 
@@ -86,7 +88,7 @@ router.post("/register", validiationChain, async (req, res) => {
     try { 
         const { name, email, password } = req.body
 
-        connection = connectDB()
+        connectDB()
 
             
 
