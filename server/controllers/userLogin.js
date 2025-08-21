@@ -1,22 +1,49 @@
-import { validationResult, body } from "express-validator"
-import connectDB from "../config/db"
-import User from "../models/user"
-import {v4 as uuid4} from "uuid"
+const { validationResult, body } = require("express-validator")
+const connectDB = require("../config/db")
+const { authenticateUser, registerUser } = require("../services/userLoginServices")
 
-
-const bcrypt = require("bcrypt")
 const express = require("express")
-const jwt = require("jsonwebtoken")
 
 const router = express.Router()
 
-
 const validiationChain = [
-    body("username").isLength({ min: 3 }).withMessage("Username must be at least 3 characters long"),
-    body("password").isLength({ min: 6 }).withMessage("Password must be at least 6 characters long"),
+    body("name")
+        .notEmpty()
+        .withMessage("Name is required")
+        .isLength({ min: 3, max: 50 })
+        .withMessage("Name must be between 3 and 50 characters long")
+        .trim()
+        .escape(),
+    body("password")
+        .notEmpty()
+        .withMessage("Password is required")
+        .isLength({ min: 6, max: 128 })
+        .withMessage("Password must be between 6 and 128 characters long")
+        .trim(),
 ]
 
-
+const registerValidationChain = [
+    body("name")
+        .notEmpty()
+        .withMessage("Name is required")
+        .isLength({ min: 3, max: 50 })
+        .withMessage("Name must be between 3 and 50 characters long")
+        .trim()
+        .escape(),
+    body("email")
+        .notEmpty()
+        .withMessage("Email is required")
+        .isEmail()
+        .withMessage("Email must be valid")
+        .trim()
+        .escape(),
+    body("password")
+        .notEmpty()
+        .withMessage("Password is required")
+        .isLength({ min: 6, max: 128 })
+        .withMessage("Password must be between 6 and 128 characters long")
+        .trim(),
+]
 
 // Login route
 router.post("/login", validiationChain, async (req, res) => {
@@ -29,55 +56,29 @@ router.post("/login", validiationChain, async (req, res) => {
     try { 
         const { name, password } = req.body
 
-        connectDB()
+        await connectDB()
 
-
-        const user = await User.findOne({name: name}).lean()
-
-        if (!user) {
-            return res.status(404).json({"message": "Invalid username or password"})
-        }
-
-
-        const isPasswordValid = await bcrypt.compare(password, user.password)
-        if (!isPasswordValid) {
-            return res.status(404).json({"message": "Invalid username or password"})
-        }
-
-        const payload = {
-            userId: user.userId,
-            name: user.name,
-            email: user.email
-        }
-
-        const JWT_SECRET = process.env.JWT_SECRET
-        
-
-        const token = jwt.sign(payload, JWT_SECRET, { 
-            expiresIn: '24h',
-            algorithm: 'HS256'
-        })
-
+        const result = await authenticateUser(name, password)
 
         res.status(200).json({
             message: "Login successful",
-            token: token,
-            user: {
-                userId: user.userId,
-                name: user.name,
-                email: user.email
-            }
+            token: result.token,
+            user: result.user
         })
 
     }
     catch (error) { 
         console.error(error)
-        res.status(500).json({ "message": "Internal server error" })
+        
+        if (error.message === "Invalid username or password") {
+            return res.status(404).json({"message": "Invalid username or password"})
+        }
+        
+        return res.status(500).json({ "message": "Internal server error" })
     }
 })
 
-
-router.post("/register", validiationChain, async (req, res) => {
+router.post("/register", registerValidationChain, async (req, res) => {
 
     const errors = validationResult(req)
 
@@ -88,40 +89,21 @@ router.post("/register", validiationChain, async (req, res) => {
     try { 
         const { name, email, password } = req.body
 
-        connectDB()
+        await connectDB()
 
-            
+        const result = await registerUser(name, email, password)
 
-
-        bcrypt.hash(password, 11, async (err, hash) => {
-            if (err) throw err;
-
-            const userExists = await User.findOne({name: name, email: email}).exec()
-
-            if (userExists) {
-                res.status(409).json({"message": "User with name or email already exists."})
-            }
-
-            const userId = uuid4()
-
-            const user = new User({
-
-                name: name,
-                email:email,
-                password: hash,
-                userId
-
-            })
-
-            user.save()
-
-            res.status(200).json({"message": "Success!"})
-        })
+        res.status(200).json(result)
 
     }
     catch (error) { 
         console.error(error)
-        res.status(500).json({ message: "Internal server error" })
+        
+        if (error.message === "User already exists") {
+            return res.status(409).json({ "message": "User already exists" })
+        }
+        
+        return res.status(500).json({ message: "Internal server error" })
     }
 
 })
