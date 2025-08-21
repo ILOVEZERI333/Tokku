@@ -2,7 +2,7 @@ const request = require('supertest');
 const express = require('express');
 
 
-const userPreferencesRouter = require('../controllers/userPreferences');
+const userPreferencesRouter = require('../services/userPreferenceServices');
 
 const app = express();
 app.use(express.json());
@@ -12,7 +12,7 @@ describe('User Preferences Routes', () => {
   
   describe('POST /api/preferences', () => {
     it('should validate required fields', async () => {
-
+      
     });
 
     it('should create new preference', async () => {
