@@ -6,7 +6,10 @@
     "test": "tests"
   },
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "start": "node index.js",
+    "dev": "nodemon index.js",
+    "migrate": "node migrations/createTables.js"
   },
   "keywords": [],
   "author": "",
@@ -17,13 +20,15 @@
     "supertest": "^7.1.4"
   },
   "dependencies": {
+    "@sequelize/postgres": "^7.0.0-alpha.46",
     "bcrypt": "^6.0.0",
     "cors": "^2.8.5",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
     "express-validator": "^7.2.1",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.17.1",
+    "pg": "^8.16.3",
+    "sequelize": "^6.37.7",
     "uuid": "^11.1.0"
   }
 }

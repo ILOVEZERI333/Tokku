@@ -12,9 +12,8 @@ const router = express.Router()
 
 const createPreferenceValidation = [
     body("user_id").notEmpty().withMessage("User ID is required"),
-    body("preference_name").notEmpty().withMessage("Preference name is required"),
-    body("level").optional().isInt({ min: 1, max: 5 }).withMessage("Level must be between 1 and 5"),
-    body("category").optional().isString().withMessage("Category must be a string")
+    body("category").notEmpty().withMessage("Category is required"),
+    body("level").optional().isInt({ min: 1, max: 5 }).withMessage("Level must be between 1 and 5")
 ]
 
 const updatePreferenceValidation = [
@@ -30,16 +29,16 @@ router.post("/preferences", createPreferenceValidation, async (req, res) => {
     }
     
     try {
-        const { user_id, preference_name, level = 1, category = "general" } = req.body
+        const { user_id, category, level = 1 } = req.body
         
-        const preference = await addUserPreference(user_id, preference_name, level, category)
+        const preference = await addUserPreference(user_id, category, level)
         
         res.status(201).json(preference)
     } catch (error) {
         console.error(error)
         
-        if (error.message === "Preference already exists for this user") {
-            return res.status(409).json({ message: "Preference already exists for this user" })
+        if (error.message === "Preference already exists for this user and category") {
+            return res.status(409).json({ message: "Preference already exists for this user and category" })
         }
         
         return res.status(500).json({ message: "Internal server error" })
@@ -65,8 +64,8 @@ router.get("/preferences/:userId", async (req, res) => {
     }
 })
 
-// PUT /api/preferences/:id - Update preference
-router.put("/preferences/:id", updatePreferenceValidation, async (req, res) => {
+// PUT /api/preferences/:userId/:category - Update preference
+router.put("/preferences/:userId/:category", updatePreferenceValidation, async (req, res) => {
     const errors = validationResult(req)
     
     if (!errors.isEmpty()) {
@@ -74,12 +73,10 @@ router.put("/preferences/:id", updatePreferenceValidation, async (req, res) => {
     }
     
     try {
-        const { id } = req.params
+        const { userId, category } = req.params
         const { level } = req.body
         
-        // Note: This would need to be adjusted based on how you want to identify preferences
-        // Currently using user_id and preference_name, but the route suggests using an ID
-        const preference = await updateUserPreference(user_id, preference_name, level)
+        const preference = await updateUserPreference(userId, category, level)
         
         res.status(200).json(preference)
     } catch (error) {
@@ -93,14 +90,12 @@ router.put("/preferences/:id", updatePreferenceValidation, async (req, res) => {
     }
 })
 
-// DELETE /api/preferences/:id - Delete preference
-router.delete("/preferences/:id", async (req, res) => {
+// DELETE /api/preferences/:userId/:category - Delete preference
+router.delete("/preferences/:userId/:category", async (req, res) => {
     try {
-        const { id } = req.params
+        const { userId, category } = req.params
         
-        // Note: This would need to be adjusted based on how you want to identify preferences
-        // Currently using user_id and preference_name, but the route suggests using an ID
-        const deleted = await removeUserPreference(user_id, preference_name)
+        const deleted = await removeUserPreference(userId, category)
         
         if (!deleted) {
             return res.status(404).json({ message: "Preference not found" })

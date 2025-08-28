@@ -6,7 +6,10 @@ const User = require("../models/user")
 
 const authenticateUser = async (name, password) => {
     try {
-        const user = await User.findOne({ name: name }).lean()
+        const user = await User.findOne({ 
+            where: { name: name },
+            raw: true 
+        });
 
         if (!user) {
             throw new Error("Invalid username or password")
@@ -18,7 +21,7 @@ const authenticateUser = async (name, password) => {
         }
 
         const payload = {
-            userId: user.userId,
+            userId: user.user_id,
             name: user.name,
             email: user.email
         }
@@ -32,7 +35,7 @@ const authenticateUser = async (name, password) => {
         return {
             token,
             user: {
-                userId: user.userId,
+                userId: user.user_id,
                 name: user.name,
                 email: user.email
             }
@@ -49,18 +52,17 @@ const registerUser = async (name, email, password) => {
         const hash = await bcrypt.hash(password, 11)
         const userId = uuid4()
 
-        const user = new User({
+        await User.create({
             name: name,
             email: email,
             password: hash,
-            userId
+            user_id: userId
         })
 
-        await user.save()
         return { message: "Success!" }
     } catch (error) {
-        // MongoDB Duplicate Key Error
-        if (error.code === 11000) {
+
+        if (error.name === 'SequelizeUniqueConstraintError') {
             throw new Error("User already exists")
         }
         throw error
@@ -70,7 +72,7 @@ const registerUser = async (name, email, password) => {
 
 const checkUserExists = async (name) => {
     try {
-        const user = await User.findOne({ name: name })
+        const user = await User.findOne({ where: { name: name } })
         return !!user
     } catch (error) {
         throw error
@@ -80,7 +82,7 @@ const checkUserExists = async (name) => {
 
 const checkEmailExists = async (email) => {
     try {
-        const user = await User.findOne({ email: email })
+        const user = await User.findOne({ where: { email: email } })
         return !!user
     } catch (error) {
         throw error

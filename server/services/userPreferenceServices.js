@@ -1,107 +1,176 @@
 const User = require("../models/user")
+const Category = require("../models/category")
 const UserPreference = require("../models/userPreference")
+const { Op } = require('sequelize');
 
 
 const getUserWithPreferences = async (user_id) => {
     try {
-        const user = await User.findOne({ user_id })
+        const user = await User.findOne({ 
+            where: { id: user_id },
+            include: [{
+                model: UserPreference,
+                include: [{
+                    model: Category
+                }]
+            }]
+        });
+
         if (!user) {
             throw new Error("User not found")
         }
 
-        const preferences = await UserPreference.find({ user_id })
-
-        return {
-            ...user.toObject(),
-            preferences
-        }
+        return user.toJSON();
     } catch (error) {
         throw error
     }
 }
 
-// Add a preference to a user
-const addUserPreference = async (user_id, preference_name, level = 1, category = "general") => {
+const addUserPreference = async (user_id, categoryName, preference_level = 1) => {
     try {
-        const newPreference = new UserPreference({
+
+        let category = await Category.findOne({
+            where: { name: categoryName.toLowerCase() }
+        });
+        
+        if (!category) {
+            category = await Category.create({
+                name: categoryName.toLowerCase()
+            });
+        }
+
+        const newPreference = await UserPreference.create({
             user_id,
-            preference_name: preference_name.toLowerCase(), // Normalize names
-            level,
-            category
-        })
-        return await newPreference.save()
+            category_id: category.id,
+            preference_level
+        });
+        return newPreference;
     } catch (error) {
-        // Duplicate key error
-        if (error.code === 11000) {
-            throw new Error("Preference already exists for this user")
+        if (error.name === 'SequelizeUniqueConstraintError') {
+            throw new Error("Preference already exists for this user and category")
         }
         throw error
     }
 }
 
-
-const updateUserPreference = async (user_id, preference_name, new_level) => {
+const updateUserPreference = async (user_id, categoryName, new_preference_level) => {
     try {
-        const result = await UserPreference.findOneAndUpdate(
-            { user_id, preference_name: preference_name.toLowerCase() },
-            { level: new_level },
-            { new: true }
-        )
+        const category = await Category.findOne({
+            where: { name: categoryName.toLowerCase() }
+        });
+
+        if (!category) {
+            throw new Error("Category not found")
+        }
+
+        const result = await UserPreference.findOne({
+            where: { 
+                user_id, 
+                category_id: category.id 
+            }
+        });
+
         if (!result) {
             throw new Error("Preference not found")
         }
-        return result
+
+        result.preference_level = new_preference_level;
+        await result.save();
+        return result;
     } catch (error) {
         throw error
     }
 }
 
-// Remove a preference from a user
-const removeUserPreference = async (user_id, preference_name) => {
+
+const removeUserPreference = async (user_id, categoryName) => {
     try {
-        const result = await UserPreference.deleteOne({ 
-            user_id, 
-            preference_name: preference_name.toLowerCase() 
-        })
-        return result.deletedCount > 0
+        const category = await Category.findOne({
+            where: { name: categoryName.toLowerCase() }
+        });
+
+        if (!category) {
+            throw new Error("Category not found")
+        }
+
+        const result = await UserPreference.destroy({ 
+            where: { 
+                user_id, 
+                category_id: category.id 
+            }
+        });
+        return result > 0;
     } catch (error) {
         throw error
     }
 }
 
-const findUsersByPreference = async (preference_name, level) => {
+const findUsersByPreference = async (categoryName, preference_level) => {
     try {
-        const query = { preference_name: preference_name.toLowerCase() }
-        
+        const category = await Category.findOne({
+            where: { name: categoryName.toLowerCase() }
+        });
 
-        query.level = level
+        if (!category) {
+            throw new Error("Category not found")
+        }
 
-        const userPreferences = await UserPreference.find(query)
-        const user_ids = userPreferences.map(user => user.user_id)
-        return await User.find({ user_id: { $in: user_ids } })
+        const users = await User.findAll({
+            include: [{
+                model: UserPreference,
+                where: {
+                    category_id: category.id,
+                    preference_level: preference_level
+                },
+                include: [{
+                    model: Category
+                }]
+            }]
+        });
+        return users;
     } catch (error) {
         throw error
     }
 }
 
-
-// Get user's preferences by category
-const getUserPreferencesByCategory = async (user_id, category) => {
+const getUserPreferencesByCategory = async (user_id, categoryName) => {
     try {
-        return await UserPreference.find({ user_id, category })
+        const category = await Category.findOne({
+            where: { name: categoryName.toLowerCase() }
+        });
+
+        if (!category) {
+            throw new Error("Category not found")
+        }
+
+        return await UserPreference.findAll({ 
+            where: { 
+                user_id: user_id, 
+                category_id: category.id 
+            },
+            include: [{
+                model: Category
+            }]
+        });
     } catch (error) {
         throw error
     }
 }
 
-// Get user's essential preferences (level 5)
+
 const getUserEssentialPreferences = async (user_id) => {
     try {
-        return await UserPreference.find({ user_id, level: 5 })
+        return await UserPreference.findAll({ 
+            where: { user_id, preference_level: 5 },
+            include: [{
+                model: Category
+            }]
+        });
     } catch (error) {
         throw error
     }
 }
+
 
 module.exports = {
     getUserWithPreferences,
@@ -110,5 +179,6 @@ module.exports = {
     removeUserPreference,
     findUsersByPreference,
     getUserPreferencesByCategory,
-    getUserEssentialPreferences
+    getUserEssentialPreferences,
+
 }

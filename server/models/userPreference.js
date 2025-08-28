@@ -1,32 +1,56 @@
-const mongoose = require("mongoose")
+const { DataTypes } = require('sequelize');
+const { sequelize } = require('../config/db');
+const User = require('./user');
+const Category = require('./category');
 
-const userPreferenceSchema = new mongoose.Schema({
+const UserPreference = sequelize.define('UserPreference', {
+    id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true
+    },
     user_id: {
-        type: String,
-        required: true,
-        index: true //For faster queries by user
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        unique: true,
+        references: {
+            model: User,
+            key: 'id'
+        }
     },
-    preference_name: {
-        type: String,
-        required: true
+    category_id: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        unique: true,
+        references: {
+            model: Category,
+            key: 'id'
+        }
     },
-    level: {
-        type: Number,
-        min: 1,
-        max: 5,
-        default: 1
-    },
-    category: {
-        type: String,
-        default: "general"
-    },
-    created_at: {
-        type: Date,
-        default: Date.now
+    preference_level: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        validate: {
+            min: 1,
+            max: 5
+        }
     }
-})
+}, {
+    tableName: 'preferences',
+    timestamps: false,
+    indexes: [
+        {
+            unique: true,
+            fields: ['user_id', 'category_id']
+        }
+    ]
+});
 
+// Define associations
+UserPreference.belongsTo(User, { foreignKey: 'user_id', targetKey: 'id' });
+UserPreference.belongsTo(Category, { foreignKey: 'category_id', targetKey: 'id' });
 
-userPreferenceSchema.index({ user_id: 1, preference_name: 1 }, { unique: true })
+User.hasOne(UserPreference, { foreignKey: 'user_id', sourceKey: 'id' });
+Category.hasOne(UserPreference, { foreignKey: 'category_id', sourceKey: 'id' });
 
-module.exports = mongoose.model("UserPreference", userPreferenceSchema)
+module.exports = UserPreference;
