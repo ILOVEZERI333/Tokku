@@ -22,7 +22,14 @@ function App() {
             <ArrowToNextPage/>
         </div>
         <div className="SearchPage">
-          <p>This is what the search page is supposed to be</p>
+          <div className="Search">
+            <label for="AnimeInput">
+              <div className="SearchBox">
+                <ul id="AnimeList"></ul>
+                <input type="text" id="AnimeInput" placeholder="Enter an anime you've watched."></input>
+              </div>
+            </label>
+          </div>
         </div>
       </div>
     </div>
