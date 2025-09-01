@@ -15,11 +15,16 @@ function ArrowToNextPage() {
 function App() {
   return (
     <div className="App">
-      <header className="App-header">
-        <h1>Tokku</h1>
-        <MALSignIn/>
-        <ArrowToNextPage/>
-      </header>
+      <div className="Pages">
+        <div className="FrontPage">
+            <h1>Tokku</h1>
+            <MALSignIn/>
+            <ArrowToNextPage/>
+        </div>
+        <div className="SearchPage">
+          <p>This is what the search page is supposed to be</p>
+        </div>
+      </div>
     </div>
   );
 }
