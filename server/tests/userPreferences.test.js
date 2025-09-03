@@ -1,5 +1,6 @@
 const User = require("../models/user");
 const UserPreference = require("../models/userPreference");
+const Category = require("../models/category");
 const { connectDB, sequelize } = require("../config/db");
 const {v4: uuid4} = require("uuid");
 
@@ -11,6 +12,8 @@ const userPreferencesRouter = require('../controllers/userPreferencesController'
 // Connect to test database
 beforeAll(async () => {
     await connectDB();
+    // Import associations after database connection
+    require("../models/associations");
 });
 
 // Clean up database after each test
@@ -47,7 +50,7 @@ describe('User Preferences Routes', () => {
       const testUser = await createTestUser();
       
       const preferenceData = {
-        user_id: testUser.user_id,
+        user_id: testUser.id,
         category: "romance",
         level: 3
       }
@@ -65,7 +68,7 @@ describe('User Preferences Routes', () => {
       const testUser = await createTestUser();
       
       const preferenceData = {
-        user_id: testUser.user_id,
+        user_id: testUser.id,
         category: "romance",
         level: 3
       }
@@ -91,20 +94,24 @@ describe('User Preferences Routes', () => {
       const testUser = await createTestUser();
       
       // Create some preferences
-      await UserPreference.create({
-        user_id: testUser.user_id,
-        category: "romance",
-        level: 3
-      });
+      await request(app)
+        .post("/api/preferences")
+        .send({
+          user_id: testUser.id,
+          category: "romance",
+          level: 3
+        });
 
-      await UserPreference.create({
-        user_id: testUser.user_id,
-        category: "action",
-        level: 5
-      });
+      await request(app)
+        .post("/api/preferences")
+        .send({
+          user_id: testUser.id,
+          category: "action",
+          level: 5
+        });
 
       const response = await request(app)
-        .get(`/api/preferences/${testUser.user_id}`)
+        .get(`/api/preferences/${testUser.id}`)
         .expect(200)
 
       expect(response.body.UserPreferences).toBeDefined()
@@ -112,7 +119,7 @@ describe('User Preferences Routes', () => {
     });
 
     it('should return 404 for non-existent user', async () => {
-      const fakeUserId = uuid4();
+      const fakeUserId = 999999;
       
       const response = await request(app)
         .get(`/api/preferences/${fakeUserId}`)
@@ -126,18 +133,20 @@ describe('User Preferences Routes', () => {
     it('should update existing preference', async () => {
       const testUser = await createTestUser();
       
-      await UserPreference.create({
-        user_id: testUser.user_id,
-        category: "romance",
-        level: 3
-      });
+      await request(app)
+        .post("/api/preferences")
+        .send({
+          user_id: testUser.id,
+          category: "romance",
+          level: 3
+        });
 
       const updateData = {
         level: 5
       }
 
       const response = await request(app)
-        .put(`/api/preferences/${testUser.user_id}/romance`)
+        .put(`/api/preferences/${testUser.id}/romance`)
         .send(updateData)
         .expect(200)
 
@@ -148,11 +157,11 @@ describe('User Preferences Routes', () => {
       const testUser = await createTestUser();
       
       const response = await request(app)
-        .put(`/api/preferences/${testUser.user_id}/nonexistent`)
+        .put(`/api/preferences/${testUser.id}/nonexistent`)
         .send({ level: 5 })
         .expect(404)
 
-      expect(response.body.message).toBe("Preference not found")
+      expect(response.body.message).toBe("Category not found")
     });
   });
 
@@ -160,14 +169,16 @@ describe('User Preferences Routes', () => {
     it('should delete preference', async () => {
       const testUser = await createTestUser();
       
-      await UserPreference.create({
-        user_id: testUser.user_id,
-        category: "romance",
-        level: 3
-      });
+      await request(app)
+        .post("/api/preferences")
+        .send({
+          user_id: testUser.id,
+          category: "romance",
+          level: 3
+        });
 
       const response = await request(app)
-        .delete(`/api/preferences/${testUser.user_id}/romance`)
+        .delete(`/api/preferences/${testUser.id}/romance`)
         .expect(200)
 
       expect(response.body.message).toBe("Preference deleted successfully")
@@ -177,10 +188,10 @@ describe('User Preferences Routes', () => {
       const testUser = await createTestUser();
       
       const response = await request(app)
-        .delete(`/api/preferences/${testUser.user_id}/nonexistent`)
+        .delete(`/api/preferences/${testUser.id}/nonexistent`)
         .expect(404)
 
-      expect(response.body.message).toBe("Preference not found")
+      expect(response.body.message).toBe("Category not found")
     });
   });
 });
@@ -188,13 +199,11 @@ describe('User Preferences Routes', () => {
 const createTestUser = async() => {
   const bcrypt = require("bcrypt")
   const hash = await bcrypt.hash("password123", 11)
-  const userId = uuid4()
 
   const user = await User.create({
-    name: `testuser_${uuid4()}`,
+    user_name: `testuser_${uuid4()}`,
     email: `test_${uuid4()}@example.com`,
-    password: hash,
-    user_id: userId
+    password: hash
   })
 
   return user

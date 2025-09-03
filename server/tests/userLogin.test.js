@@ -1,7 +1,8 @@
 const User = require("../models/user");
+const UserPreference = require("../models/userPreference");
 const { connectDB, sequelize } = require("../config/db");
 const {v4: uuid4} = require("uuid");
-
+const bcrypt = require("bcrypt")
 const request = require('supertest');
 const express = require('express');
 
@@ -14,7 +15,8 @@ beforeAll(async () => {
 
 // Clean up database after each test
 afterEach(async () => {
-    await User.destroy({ where: {} });
+  await UserPreference.destroy({ where: {} }); // Delete child records first
+  await User.destroy({ where: {} }); // Then delete parent records
 });
 
 // Close database connection after all tests
@@ -114,7 +116,7 @@ describe('User Login Routes', () => {
       
       expect(shortPasswordResponse.body.errors).toBeDefined()
       expect(shortPasswordResponse.body.errors.some(error => 
-        error.msg === "Password must be at least 6 characters long"
+        error.msg === "Password must be between 6 and 128 characters long"
       )).toBe(true)
     });
 
@@ -131,10 +133,10 @@ describe('User Login Routes', () => {
 
       const response = await request(app)
         .post("/api/login")
-        .send(invalidCredentials)
-        .expect(401)
+        .send(credentials)
+        .expect(404)
       
-      expect(response.body.message).toBe("Invalid username or password")
+      expect(response.body.message).toBe("User not found")
     });
 
 
@@ -151,9 +153,9 @@ describe('User Login Routes', () => {
       
       expect(response.body.token).toBeDefined()
       expect(response.body.user).toBeDefined()
-      expect(response.body.user.name).toBe(testUser.name)
+      expect(response.body.user.user_name).toBe(testUser.name)
       expect(response.body.user.email).toBe(testUser.email)
-      expect(response.body.user.userId).toBeDefined()
+      expect(response.body.user.id).toBeDefined()
 
       await deleteTestUser(testUser.name)
     });
@@ -193,7 +195,7 @@ describe('User Login Routes', () => {
       
       expect(response.body.errors).toBeDefined()
       expect(response.body.errors.some(error => 
-        error.msg === "Please provide a valid email address"
+        error.msg === "Email must be valid"
       )).toBe(true)
     });
 
@@ -206,17 +208,22 @@ describe('User Login Routes', () => {
       
       expect(response.body.errors).toBeDefined()
       expect(response.body.errors.some(error => 
-        error.msg === "Password must be at least 6 characters long"
+        error.msg === "Password must be between 6 and 128 characters long"
       )).toBe(true)
     });
 
     it('should return 409 for existing user', async () => { 
-      const testUser = {name: "test", email:"test@example.com", password:"password123"} 
+      
+
+      const hash = await bcrypt.hash("password123", 11)
+
+      const testUser = {name: "test", email:"test@example.com", password:hash} 
+
       await createTestUser(testUser.name, testUser.email, testUser.password)
 
       const response = await request(app)
         .post('/api/register')
-        .send(testUser)
+        .send({name: "test", email:"test@example.com", password:"password123"})
         .expect(409)
 
       expect(response.body.message).toBe("User already exists")
@@ -244,10 +251,10 @@ describe('User Login Routes', () => {
       // Verify user was actually created in database
       const createdUser = await findUser(uniqueUsername)
       expect(createdUser).toBeDefined()
-      expect(createdUser.name).toBe(uniqueUsername)
+      expect(createdUser.user_name).toBe(uniqueUsername)
       expect(createdUser.email).toBe(uniqueEmail)
       expect(createdUser.password).toBeDefined()
-      expect(createdUser.user_id).toBeDefined()
+      expect(createdUser.id).toBeDefined()
 
       // Clean up
       await deleteTestUser(uniqueUsername)
@@ -256,31 +263,38 @@ describe('User Login Routes', () => {
 });
 
 const createTestUser = async(user_name, email, password) => {
-  const user = await User.findOne({ where: { name: user_name } })
 
-  if (user) {
-    console.log('User already exists')
-    return
+  try{
+    const user = await User.findOne({ where: { user_name: user_name } })
+
+    if (user) {
+      console.log('User already exists')
+      return
+    }
+
+    const bcrypt = require("bcrypt")
+    const hash = await bcrypt.hash(password, 11)
+
+    userTest = await User.create({
+      user_name: user_name,
+      email: email,
+      password: hash
+    })
+
+
+    console.log(userTest)
+
+    return true
   }
-
-  const bcrypt = require("bcrypt")
-  const hash = await bcrypt.hash(password, 11)
-
-  const newId = uuid4()
-
-  await User.create({
-    name: user_name,
-    email: email,
-    password: hash,
-    user_id: newId
-  })
-
-  return true
+  catch (err) {
+    throw err
+  }
+  
 }
 
 const deleteTestUser = async(user_name) => {
   try {
-    const deletedUser = await User.destroy({ where: { name: user_name } })
+    const deletedUser = await User.destroy({ where: { user_name: user_name } })
 
     if (deletedUser) {
       console.log('User deleted: ' + user_name)
@@ -295,7 +309,7 @@ const deleteTestUser = async(user_name) => {
 
 const findUser = async(user_name) => {
   try {
-    const user = await User.findOne({ where: { name: user_name } })
+    const user = await User.findOne({ where: { user_name: user_name } })
     return user
   } catch (err) {
     console.error('Error finding user:', err)

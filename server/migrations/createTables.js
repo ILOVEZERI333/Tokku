@@ -34,13 +34,13 @@ async function createTables() {
         const user1 = await User.create({
             user_name: 'testuser1',
             email: 'test1@example.com',
-            MAL_acc: 'user1_mal'
+            mal_acc: 'user1_mal'
         });
         
         const user2 = await User.create({
             user_name: 'testuser2',
             email: 'test2@example.com',
-            MAL_acc: null
+            mal_acc: null
         });
         
         // Create preferences

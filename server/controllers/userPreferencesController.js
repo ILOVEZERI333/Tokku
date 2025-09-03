@@ -25,6 +25,10 @@ router.post("/preferences", createPreferenceValidation, async (req, res) => {
     const errors = validationResult(req)
     
     if (!errors.isEmpty()) {
+        console.log("Request body:", req.body)
+        console.log("Validation errors:", errors.array())
+        console.log("ERROR" + errors.array()[0].message)
+
         return res.status(400).json({ errors: errors.array() })
     }
     
@@ -35,13 +39,35 @@ router.post("/preferences", createPreferenceValidation, async (req, res) => {
         
         res.status(201).json(preference)
     } catch (error) {
-        console.error(error)
+        console.error("Error creating preference:", error)
+        
+        if (error.message.startsWith("Validation failed:")) {
+            return res.status(400).json({ message: error.message })
+        }
         
         if (error.message === "Preference already exists for this user and category") {
             return res.status(409).json({ message: "Preference already exists for this user and category" })
         }
         
-        return res.status(500).json({ message: "Internal server error" })
+        if (error.message === "Invalid user or category reference") {
+            return res.status(400).json({ message: "Invalid user or category reference" })
+        }
+        
+        if (error.message === "Database operation failed") {
+            return res.status(500).json({ message: "Database operation failed" })
+        }
+        
+        // Log the full error for debugging
+        console.error("Full error details:", {
+            message: error.message,
+            name: error.name,
+            stack: error.stack
+        })
+
+        return res.status(500).json({ 
+            message: "Internal server error",
+            details: process.env.NODE_ENV === 'development' ? error.message : undefined
+        })
     }
 })
 
@@ -58,6 +84,10 @@ router.get("/preferences/:userId", async (req, res) => {
         
         if (error.message === "User not found") {
             return res.status(404).json({ message: "User not found" })
+        }
+        
+        if (error.message === "Database operation failed") {
+            return res.status(500).json({ message: "Database operation failed" })
         }
         
         return res.status(500).json({ message: "Internal server error" })
@@ -82,8 +112,20 @@ router.put("/preferences/:userId/:category", updatePreferenceValidation, async (
     } catch (error) {
         console.error(error)
         
+        if (error.message.startsWith("Validation failed:")) {
+            return res.status(400).json({ message: error.message })
+        }
+        
+        if (error.message === "Category not found") {
+            return res.status(404).json({ message: "Category not found" })
+        }
+        
         if (error.message === "Preference not found") {
             return res.status(404).json({ message: "Preference not found" })
+        }
+        
+        if (error.message === "Database operation failed") {
+            return res.status(500).json({ message: "Database operation failed" })
         }
         
         return res.status(500).json({ message: "Internal server error" })
@@ -104,6 +146,15 @@ router.delete("/preferences/:userId/:category", async (req, res) => {
         res.status(200).json({ message: "Preference deleted successfully" })
     } catch (error) {
         console.error(error)
+        
+        if (error.message === "Category not found") {
+            return res.status(404).json({ message: "Category not found" })
+        }
+        
+        if (error.message === "Database operation failed") {
+            return res.status(500).json({ message: "Database operation failed" })
+        }
+        
         return res.status(500).json({ message: "Internal server error" })
     }
 })

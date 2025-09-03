@@ -1,9 +1,4 @@
 
-
-
-
-
-
 const express = require("express")
 const { connectDB } = require("./config/db")
 const app = express()
@@ -11,8 +6,11 @@ const PORT = process.env.PORT || 3000
 
 // Import models to ensure they're registered with sequelize
 require("./models/user")
+require("./models/category")
 require("./models/userPreference")
 
+// Import associations after all models are loaded
+require("./models/associations")
 
 connectDB()
     .then(() => {

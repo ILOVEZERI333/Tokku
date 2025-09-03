@@ -5,22 +5,26 @@ const { sequelize } = require('../config/db');
 
 const User = sequelize.define('User', {
     id: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.BIGINT,
         primaryKey: true,
         autoIncrement: true
     },
     user_name: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.STRING(100),
+        allowNull: false,
+        unique: true
+    },
+    password: {
+        type: DataTypes.STRING(100),
         allowNull: false
     },
-    MAL_acc: {
-        type: DataTypes.STRING(255),
+    mal_acc: {
+        type: DataTypes.TEXT,
         allowNull: true
     },
     email: {
-        type: DataTypes.STRING(255),
-        allowNull: false,
-        unique: true,
+        type: DataTypes.TEXT,
+        allowNull: true,
         validate: {
             isEmail: true
         }

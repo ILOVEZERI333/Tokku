@@ -8,8 +8,6 @@ dotenv.config({path: envFile})
 
 const sequelize = new Sequelize(process.env.DATABASE_URL || 'postgresql://localhost:5432/', {
     dialect: PostgresDialect,
-    database: 'postgres',
-    user: 'optif',
     logging: process.env.NODE_ENV === 'development' ? console.log : false,
     pool: {
         max: 5,
@@ -24,7 +22,7 @@ async function connectDB() {
         await sequelize.authenticate();
         console.log("Connected to PostgreSQL");
         
-        //remove {alter:true} on PROD USE
+ 
         await sequelize.sync();
         console.log("Database synchronized");
         

@@ -1,6 +1,6 @@
 const { validationResult, body } = require("express-validator")
-const connectDB = require("../config/db")
 const { authenticateUser, registerUser } = require("../services/userLoginServices")
+
 
 const express = require("express")
 
@@ -56,8 +56,6 @@ router.post("/login", validiationChain, async (req, res) => {
     try { 
         const { name, password } = req.body
 
-        await connectDB()
-
         const result = await authenticateUser(name, password)
 
         res.status(200).json({
@@ -70,8 +68,12 @@ router.post("/login", validiationChain, async (req, res) => {
     catch (error) { 
         console.error(error)
         
-        if (error.message === "Invalid username or password") {
-            return res.status(404).json({"message": "Invalid username or password"})
+        if (error.message === "User not found") {
+            return res.status(404).json({"message": "User not found"})
+        }
+        
+        if (error.message === "Invalid password") {
+            return res.status(401).json({"message": "Invalid password"})
         }
         
         return res.status(500).json({ "message": "Internal server error" })
@@ -86,10 +88,13 @@ router.post("/register", registerValidationChain, async (req, res) => {
         return res.status(400).json({ errors: errors.array() })
     }
 
+
     try { 
         const { name, email, password } = req.body
 
-        await connectDB()
+        if (!name || !email) {  return res.status(400).json({ errors: errors.array() }) }
+
+        console.log(name)
 
         const result = await registerUser(name, email, password)
 
@@ -99,8 +104,16 @@ router.post("/register", registerValidationChain, async (req, res) => {
     catch (error) { 
         console.error(error)
         
-        if (error.message === "User already exists") {
-            return res.status(409).json({ "message": "User already exists" })
+        if (error.message.startsWith("Validation failed:")) {
+            return res.status(400).json({ "message": error.message })
+        }
+        
+        if (error.message.includes("already exists")) {
+            return res.status(409).json({ "message": error.message })
+        }
+        
+        if (error.message === "Database operation failed" || error.message.includes("Database") || error.message.includes("connection") || error.message.includes("authentication")) {
+            return res.status(500).json({ "message": "Database operation failed" })
         }
         
         return res.status(500).json({ message: "Internal server error" })
