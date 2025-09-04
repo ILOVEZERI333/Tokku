@@ -1,4 +1,6 @@
 import './App.css';
+import { useState } from 'react';
+
 
 function MALSignIn() {
   return(
@@ -13,6 +15,11 @@ function ArrowToNextPage() {
 }
 
 function App() {
+  
+
+
+
+
   return (
     <div className="App">
       <div className="Pages">
@@ -23,7 +30,7 @@ function App() {
         </div>
         <div className="SearchPage">
           <div className="Search">
-            <label for="AnimeInput">
+            <label htmlFor="AnimeInput">
               <div className="SearchBox">
                 <ul id="AnimeList"></ul>
                 <input type="text" id="AnimeInput" placeholder="Enter an anime you've watched."></input>
